@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Upload, Send, FileImage, Brain, MessageCircle, FileText, AlertCircle, CheckCircle, Activity } from 'lucide-react';
+import { Upload, Send, FileImage, Brain, MessageCircle, FileText, AlertCircle, CheckCircle, Activity, Bot, User, Sparkles, Heart } from 'lucide-react';
 
 export default function App() {
   const [selectedFile, setSelectedFile] = useState(null);
@@ -58,7 +58,7 @@ export default function App() {
         return;
       }
       
-      // Validate file size (max 10MB)
+      // Validate file size (max 10MB)  
       if (file.size > 10 * 1024 * 1024) {
         setError('File size too large. Please select an image smaller than 10MB.');
         return;
@@ -106,9 +106,8 @@ export default function App() {
 
   const handleChat = async () => {
     if (!chatInput.trim()) return;
-
     const userMessage = chatInput.trim();
-    setChatMessages(prev => [...prev, { type: 'user', message: userMessage }]);
+    setChatMessages(prev => [...prev, { id: Date.now(), type: 'user', message: userMessage }]);
     setChatInput('');
     setChatLoading(true);
 
@@ -123,21 +122,13 @@ export default function App() {
       });
 
       const data = await response.json();
-      
       if (data.success) {
-        setChatMessages(prev => [...prev, { type: 'ai', message: data.response }]);
+        setChatMessages(prev => [...prev, { id: Date.now() + 1, type: 'ai', message: data.response }]);
       } else {
-        setChatMessages(prev => [...prev, { 
-          type: 'ai', 
-          message: `Error: ${data.error || 'Sorry, I encountered an error. Please try again.'}` 
-        }]);
+        setChatMessages(prev => [...prev, { id: Date.now() + 1, type: 'ai', message: `Error: ${data.error || 'Sorry, I encountered an error. Please try again.'}` }]);
       }
     } catch (error) {
-      console.error('Chat error:', error);
-      setChatMessages(prev => [...prev, { 
-        type: 'ai', 
-        message: 'Connection error. Please check your internet connection and ensure the server is running.' 
-      }]);
+      setChatMessages(prev => [...prev, { id: Date.now() + 1, type: 'ai', message: 'Connection error. Please check your internet connection and ensure the server is running.' }]);
     }
     setChatLoading(false);
   };
@@ -179,6 +170,54 @@ export default function App() {
       e.preventDefault();
       handleChat();
     }
+  };
+
+  const useTypewriter = (text, speed = 20) => {
+    const [displayedText, setDisplayedText] = useState('');
+    const [isComplete, setIsComplete] = useState(false);
+
+    useEffect(() => {
+      if (!text) return;
+      setDisplayedText('');
+      setIsComplete(false);
+      let i = 0;
+      const timer = setInterval(() => {
+        if (i < text.length) {
+          setDisplayedText(prev => prev + text.charAt(i));
+          i++;
+        } else {
+          setIsComplete(true);
+          clearInterval(timer);
+        }
+      }, speed);
+      return () => clearInterval(timer);
+    }, [text, speed]);
+
+    return { displayedText, isComplete };
+  };
+
+  const TypewriterMessage = ({ message, onComplete }) => {
+    const { displayedText, isComplete } = useTypewriter(message, 20);
+    useEffect(() => {
+      if (isComplete && onComplete) {
+        onComplete();
+      }
+    }, [isComplete, onComplete]);
+    return (
+      <div className="flex justify-start animate-fadeIn">
+        <div className="flex items-start space-x-3 max-w-md">
+          <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-full flex items-center justify-center shadow-lg">
+            <Bot className="h-4 w-4 text-white" />
+          </div>
+          <div className="bg-gradient-to-br from-gray-50 to-gray-100 px-4 py-3 rounded-2xl rounded-tl-sm shadow-md border border-gray-200">
+            <p className="text-sm text-gray-800 leading-relaxed">
+              {displayedText}
+              {!isComplete && <span className="animate-pulse ml-1 text-emerald-500">|</span>}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -479,90 +518,186 @@ export default function App() {
 
         {/* Chat Tab */}
         {activeTab === 'chat' && (
-          <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-            <div className="p-4 bg-gradient-to-r from-green-500 to-teal-600 text-white">
-              <h2 className="text-xl font-semibold flex items-center">
-                <MessageCircle className="h-5 w-5 mr-2" />
-                AI Medical Assistant
-              </h2>
-              <p className="text-sm opacity-90 mt-1">Ask questions about your diagnosis or general medical topics</p>
-              {!serverStatus?.gemini_configured && (
-                <p className="text-sm bg-red-500 bg-opacity-20 rounded px-2 py-1 mt-2">
-                  ⚠️ AI Assistant unavailable - Gemini API not configured
-                </p>
-              )}
+          <div className="bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-100">
+            {/* Header */}
+            <div className="relative p-6 bg-gradient-to-br from-emerald-400 via-teal-500 to-cyan-500 text-white overflow-hidden">
+              <div className="absolute inset-0 opacity-10">
+                <div className="absolute top-4 left-4">
+                  <Heart className="h-8 w-8 animate-pulse" />
+                </div>
+                <div className="absolute top-8 right-8">
+                  <Activity className="h-6 w-6 animate-bounce" />
+                </div>
+                <div className="absolute bottom-4 left-1/2">
+                  <Sparkles className="h-5 w-5 animate-ping" />
+                </div>
+              </div>
+              <div className="relative z-10">
+                <div className="flex items-center space-x-3 mb-2">
+                  <div className="w-10 h-10 bg-white bg-opacity-20 rounded-full flex items-center justify-center backdrop-blur-sm">
+                    <Bot className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold">AI Medical Assistant</h2>
+                    <div className="flex items-center space-x-2 mt-1">
+                      <div className="w-2 h-2 bg-green-300 rounded-full animate-pulse"></div>
+                      <span className="text-sm opacity-90">Online & Ready to Help</span>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-sm opacity-90">Your intelligent health companion for medical questions and guidance</p>
+                {!serverStatus?.gemini_configured && (
+                  <div className="mt-4 p-3 bg-red-500 bg-opacity-30 rounded-xl backdrop-blur-sm border border-red-300 border-opacity-30">
+                    <p className="text-sm flex items-center">
+                      <span className="mr-2">⚠️</span>
+                      AI Assistant temporarily unavailable - Please check back soon
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
 
-            <div className="h-96 overflow-y-auto p-4 space-y-4">
+            {/* Chat Area */}
+            <div className="h-96 overflow-y-auto p-6 bg-gradient-to-b from-gray-50 to-white">
               {chatMessages.length === 0 && (
-                <div className="text-center text-gray-500 mt-12">
-                  <MessageCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Start a conversation with the AI medical assistant</p>
-                  <p className="text-sm mt-2">Ask about symptoms, treatments, or your diagnosis results</p>
+                <div className="text-center text-gray-500 mt-16 animate-fadeIn">
+                  <div className="w-16 h-16 bg-gradient-to-br from-emerald-100 to-teal-100 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+                    <MessageCircle className="h-8 w-8 text-emerald-500" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-700 mb-2">Welcome to Your AI Health Assistant</h3>
+                  <p className="text-sm leading-relaxed max-w-sm mx-auto">
+                    I'm here to help answer your medical questions and provide health guidance. 
+                    Feel free to ask about symptoms, treatments, or general health topics.
+                  </p>
                   {predictions?.top_prediction && (
-                    <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                    <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100 max-w-sm mx-auto">
+                      <div className="flex items-center justify-center mb-2">
+                        <Sparkles className="h-4 w-4 text-blue-500 mr-2" />
+                        <span className="text-sm font-medium text-blue-700">Suggested Topic</span>
+                      </div>
                       <p className="text-sm text-blue-800">
-                        💡 You can ask about: "{predictions.top_prediction.disease}"
+                        Ask me about: "{predictions.top_prediction.disease}"
                       </p>
                     </div>
                   )}
                 </div>
               )}
 
-              {chatMessages.map((msg, index) => (
-                <div
-                  key={index}
-                  className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div
-                    className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                      msg.type === 'user'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-100 text-gray-900'
-                    }`}
-                  >
-                    <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
-                  </div>
-                </div>
-              ))}
+              <div className="space-y-6">
+                {chatMessages.map((msg, index) => {
+                  if (msg.type === 'user') {
+                    return (
+                      <div key={msg.id} className="flex justify-end animate-slideIn">
+                        <div className="flex items-start space-x-3 max-w-md">
+                          <div className="bg-gradient-to-br from-blue-500 to-blue-600 px-4 py-3 rounded-2xl rounded-tr-sm shadow-lg">
+                            <p className="text-sm text-white leading-relaxed">{msg.message}</p>
+                          </div>
+                          <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-blue-400 to-blue-500 rounded-full flex items-center justify-center shadow-lg">
+                            <User className="h-4 w-4 text-white" />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  } else {
+                    // Only animate the last AI message
+                    const isLastAI = msg.type === 'ai' && index === chatMessages.length - 1 && chatLoading;
 
-              {chatLoading && (
-                <div className="flex justify-start">
-                  <div className="bg-gray-100 px-4 py-2 rounded-lg">
-                    <div className="flex items-center space-x-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-400 border-t-transparent"></div>
-                      <span className="text-sm text-gray-600">AI is thinking...</span>
+                    return isLastAI ? (
+                      <TypewriterMessage
+                        key={msg.id}
+                        message={msg.message}
+                        onComplete={() => setChatLoading(false)}
+                      />
+                    ) : (
+                      <div key={msg.id} className="flex justify-start animate-fadeIn">
+                        <div className="flex items-start space-x-3 max-w-md">
+                          <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-full flex items-center justify-center shadow-lg">
+                            <Bot className="h-4 w-4 text-white" />
+                          </div>
+                          <div className="bg-gradient-to-br from-gray-50 to-gray-100 px-4 py-3 rounded-2xl rounded-tl-sm shadow-md border border-gray-200">
+                            <p className="text-sm text-gray-800 leading-relaxed">{msg.message}</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+                })}
+
+                {chatLoading && (
+                  <div className="flex justify-start animate-fadeIn">
+                    <div className="flex items-start space-x-3">
+                      <div className="w-8 h-8 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-full flex items-center justify-center shadow-lg">
+                        <Bot className="h-4 w-4 text-white" />
+                      </div>
+                      <div className="bg-gradient-to-br from-gray-50 to-gray-100 px-4 py-3 rounded-2xl rounded-tl-sm shadow-md border border-gray-200">
+                        <div className="flex items-center space-x-2">
+                          <div className="flex space-x-1">
+                            <div className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce"></div>
+                            <div className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                            <div className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                          </div>
+                          <span className="text-sm text-gray-600">AI is analyzing...</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
               <div ref={chatEndRef} />
             </div>
 
-            <div className="p-4 border-t border-gray-200">
-              <div className="flex space-x-2">
-                <input
-                  type="text"
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder={
-                    serverStatus?.gemini_configured 
-                      ? "Ask about your diagnosis or medical questions..."
-                      : "AI Assistant unavailable - check server configuration"
-                  }
-                  disabled={!serverStatus?.gemini_configured}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
-                />
+            {/* Input Area */}
+            <div className="p-6 bg-gray-50 border-t border-gray-100">
+              <div className="flex space-x-3">
+                <div className="flex-1 relative">
+                  <input
+                    type="text"
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    placeholder={
+                      serverStatus?.gemini_configured 
+                        ? "Type your medical question here..."
+                        : "AI Assistant unavailable - check server configuration"
+                    }
+                    disabled={!serverStatus?.gemini_configured || chatLoading}
+                    className="w-full px-4 py-3 pr-12 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed transition-all duration-200 shadow-sm"
+                  />
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    <MessageCircle className="h-5 w-5 text-gray-400" />
+                  </div>
+                </div>
                 <button
                   onClick={handleChat}
                   disabled={chatLoading || !chatInput.trim() || !serverStatus?.gemini_configured}
-                  className="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-6 py-3 rounded-xl hover:from-emerald-600 hover:to-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center space-x-2"
                 >
                   <Send className="h-5 w-5" />
+                  <span className="hidden sm:inline font-medium">Send</span>
                 </button>
               </div>
+              <p className="text-xs text-gray-500 mt-3 text-center">
+                This AI assistant provides general medical information and should not replace professional medical advice.
+              </p>
             </div>
+
+            {/* Animations */}
+            <style jsx>{`
+              @keyframes fadeIn {
+                from { opacity: 0; transform: translateY(10px); }
+                to { opacity: 1; transform: translateY(0); }
+              }
+              @keyframes slideIn {
+                from { opacity: 0; transform: translateX(20px); }
+                to { opacity: 1; transform: translateX(0); }
+              }
+              .animate-fadeIn {
+                animation: fadeIn 0.5s ease-out;
+              }
+              .animate-slideIn {
+                animation: slideIn 0.3s ease-out;
+              }
+            `}</style>
           </div>
         )}
 

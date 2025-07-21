@@ -143,6 +143,7 @@ def medical_chatbot():
         User question: {user_message}
         
         Please provide a clear, informative response about medical conditions, symptoms, treatments, or general health information. Always remind users to consult with healthcare professionals for personalized medical advice.
+        in a correct text format and minimul content within 1 line for irrelavent message.
         """
         
         # Check if Gemini API key is configured
