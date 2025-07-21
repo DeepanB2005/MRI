@@ -13,13 +13,14 @@ import cv2
 app = Flask(__name__)
 CORS(app)
 
-import google.generativeai as genai
-
 # Configure the Gemini API key
-genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
+# Use environment variable or replace with your actual API key
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "AIzaSyCr-vS21PrlF5e6oJ3tBSEaYc45zTk23RU")
+genai.configure(api_key=GEMINI_API_KEY)
 
-# Initialize the Gemini 1.5 Flash model with code execution capabilities
+# Initialize the Gemini 1.5 Flash model
 model = genai.GenerativeModel(model_name='gemini-1.5-flash')
+
 # Load trained models
 try:
     with open('best_model.pkl', 'rb') as f:
@@ -38,6 +39,10 @@ def preprocess_image(image):
         # Convert PIL image to numpy array
         img_array = np.array(image)
         
+        # Convert to RGB if RGBA
+        if len(img_array.shape) == 3 and img_array.shape[2] == 4:
+            img_array = cv2.cvtColor(img_array, cv2.COLOR_RGBA2RGB)
+        
         # Convert to grayscale if needed
         if len(img_array.shape) == 3:
             img_array = cv2.cvtColor(img_array, cv2.COLOR_RGB2GRAY)
@@ -48,7 +53,7 @@ def preprocess_image(image):
         # Normalize pixel values
         img_normalized = img_resized.astype('float32') / 255.0
         
-        # Flatten for traditional ML models or reshape for deep learning
+        # Flatten for traditional ML models
         img_flattened = img_normalized.flatten().reshape(1, -1)
         
         return img_flattened
@@ -68,10 +73,17 @@ def predict_disease():
         
         # Check if models are loaded
         if classifier is None or label_encoder is None:
-            return jsonify({'error': 'Models not loaded properly'}), 500
+            return jsonify({'error': 'Models not loaded properly. Please ensure best_model.pkl and label_encoder.pkl are in the correct directory'}), 500
         
         # Read and process image
-        image = Image.open(io.BytesIO(file.read()))
+        try:
+            image = Image.open(io.BytesIO(file.read()))
+            # Convert to RGB if needed
+            if image.mode != 'RGB':
+                image = image.convert('RGB')
+        except Exception as e:
+            return jsonify({'error': f'Invalid image file: {str(e)}'}), 400
+        
         processed_image = preprocess_image(image)
         
         if processed_image is None:
@@ -108,6 +120,7 @@ def predict_disease():
         })
         
     except Exception as e:
+        print(f"Prediction error: {e}")
         return jsonify({'error': f'Prediction failed: {str(e)}'}), 500
 
 @app.route('/api/chat', methods=['POST'])
@@ -132,6 +145,13 @@ def medical_chatbot():
         Please provide a clear, informative response about medical conditions, symptoms, treatments, or general health information. Always remind users to consult with healthcare professionals for personalized medical advice.
         """
         
+        # Check if Gemini API key is configured
+        if GEMINI_API_KEY == "YOUR_ACTUAL_GEMINI_API_KEY_HERE" or not GEMINI_API_KEY:
+            return jsonify({
+                'success': False,
+                'error': 'Gemini API key not configured. Please set your GEMINI_API_KEY environment variable.'
+            }), 500
+        
         # Generate response using Gemini
         response = model.generate_content(medical_prompt)
         
@@ -141,6 +161,7 @@ def medical_chatbot():
         })
         
     except Exception as e:
+        print(f"Chat error: {e}")
         return jsonify({'error': f'Chat service unavailable: {str(e)}'}), 500
 
 @app.route('/api/generate-report', methods=['POST'])
@@ -170,6 +191,13 @@ def generate_medical_report():
         Format this as a professional medical report while emphasizing that this is AI-generated and should not replace professional medical consultation.
         """
         
+        # Check if Gemini API key is configured
+        if GEMINI_API_KEY == "YOUR_ACTUAL_GEMINI_API_KEY_HERE" or not GEMINI_API_KEY:
+            return jsonify({
+                'success': False,
+                'error': 'Gemini API key not configured. Please set your GEMINI_API_KEY environment variable.'
+            }), 500
+        
         response = model.generate_content(report_prompt)
         
         return jsonify({
@@ -178,15 +206,28 @@ def generate_medical_report():
         })
         
     except Exception as e:
+        print(f"Report generation error: {e}")
         return jsonify({'error': f'Report generation failed: {str(e)}'}), 500
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
+    gemini_configured = GEMINI_API_KEY and GEMINI_API_KEY != "YOUR_ACTUAL_GEMINI_API_KEY_HERE"
+    
     return jsonify({
         'status': 'healthy',
         'models_loaded': classifier is not None and label_encoder is not None,
-        'gemini_configured': os.environ.get("AIzaSyCr-vS21PrlF5e6oJ3tBSEaYc45zTk23RU") not in [None, "", "AIzaSyCr-vS21PrlF5e6oJ3tBSEaYc45zTk23RU"]
+        'gemini_configured': gemini_configured,
+        'message': 'MedAI Diagnostics API is running'
     })
+
+# Error handlers
+@app.errorhandler(404)
+def not_found_error(error):
+    return jsonify({'error': 'Endpoint not found'}), 404
+
+@app.errorhandler(500)
+def internal_error(error):
+    return jsonify({'error': 'Internal server error'}), 500
 
 if __name__ == '__main__':
     # Create uploads directory if it doesn't exist
@@ -194,8 +235,10 @@ if __name__ == '__main__':
     
     print("Starting Medical Image Analysis Server...")
     print("Make sure to:")
-    print("1. Replace 'YOUR_GEMINI_API_KEY_HERE' with your actual Gemini API key")
+    print("1. Set your Gemini API key as environment variable: export GEMINI_API_KEY=your_key_here")
+    print("   Or replace 'YOUR_ACTUAL_GEMINI_API_KEY_HERE' in the code")
     print("2. Place 'best_model.pkl' and 'label_encoder.pkl' in the same directory")
-    print("3. Install required packages: pip install flask flask-cors pillow google-generativeai opencv-python")
+    print("3. Install required packages:")
+    print("   pip install flask flask-cors pillow google-generativeai opencv-python numpy")
     
     app.run(debug=True, host='0.0.0.0', port=5000)
