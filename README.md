@@ -1,2 +1,0 @@
-# MRI
-Multi disease classification
