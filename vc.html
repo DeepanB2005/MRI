@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Voice Recognition Demo</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 700px; margin: 2rem auto; }
+    #transcript { min-height: 120px; padding: .75rem; border: 1px solid #ccc; border-radius: 6px; }
+    button { margin-right: .5rem; }
+    .interim { opacity: .5; }
+    .error { color: #b00020; }
+  </style>
+</head>
+<body style="background-color: red;">
+  <h1>Voice Recognition Demo</h1>
+
+  <label>
+    Language:
+    <select id="lang">
+      <option value="en-US" selected>English (US)</option>
+      <option value="en-IN">English (India)</option>
+      <option value="ta-IN">Tamil (India)</option>
+      <option value="hi-IN">Hindi (India)</option>
+    </select>
+  </label>
+
+  <div style="margin: 1rem 0;">
+    <button id="startBtn">Start</button>
+    <button id="stopBtn" disabled>Stop</button>
+  </div>
+
+  <div id="status">Idle</div>
+  <div id="transcript"></div>
+  <div id="error" class="error"></div>
+
+  <script>
+    // 1) Feature detect
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      document.getElementById('status').textContent =
+        "Your browser doesn't support the Web Speech API. Try Chrome/Edge.";
+      throw new Error('SpeechRecognition not supported');
+    }
+
+    // 2) Setup
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;       // keep listening until you stop it
+    recognition.interimResults = true;   // show partial (interim) results
+    recognition.maxAlternatives = 1;
+
+    // DOM elements
+    const startBtn   = document.getElementById('startBtn');
+    const stopBtn    = document.getElementById('stopBtn');
+    const transcript = document.getElementById('transcript');
+    const statusEl   = document.getElementById('status');
+    const errorEl    = document.getElementById('error');
+    const langSel    = document.getElementById('lang');
+
+    let finalText = '';
+
+    // 3) Events
+    recognition.onstart = () => {
+      statusEl.textContent = 'Listening…';
+      errorEl.textContent = '';
+      startBtn.disabled = true;
+      stopBtn.disabled  = false;
+    };
+
+    recognition.onend = () => {
+      statusEl.textContent = 'Stopped';
+      startBtn.disabled = false;
+      stopBtn.disabled  = true;
+    };
+
+    recognition.onerror = (e) => {
+      errorEl.textContent = `Error: ${e.error}`;
+    };
+
+    recognition.onresult = (event) => {
+      let interim = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const res = event.results[i];
+        if (res.isFinal) {
+          finalText += res[0].transcript + ' ';
+        } else {
+          interim += res[0].transcript;
+        }
+      }
+      transcript.innerHTML = `
+        <span>${finalText}</span>
+        <span class="interim">${interim}</span>
+      `;
+    };
+
+    // 4) Controls
+    startBtn.addEventListener('click', () => {
+      recognition.lang = langSel.value; // set language just before starting
+      finalText = '';
+      transcript.textContent = '';
+      recognition.start(); // must be triggered by a user gesture
+    });
+
+    stopBtn.addEventListener('click', () => recognition.stop());
+  </script>
+</body>
+</html>
